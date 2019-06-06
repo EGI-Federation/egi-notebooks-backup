@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -x
+
 # produce a list of the PVCs for restoring
 kubectl get pvc --all-namespaces -o yaml > $PV_DIR/pvc
 

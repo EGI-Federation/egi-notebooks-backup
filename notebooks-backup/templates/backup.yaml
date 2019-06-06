@@ -1,0 +1,61 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: notebooks-backup
+  labels:
+    app: {{ template "notebook-backup.name" . }}
+    chart: {{ template "notebook-backup.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  schedule: {{ .Values.backup.schedule }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          {{- if .Values.rbac.enabled }}
+          serviceAccountName: notebooks-backup
+          {{- end }}
+          restartPolicy: Never 
+          containers:
+          - name: backup 
+            image: "{{ .Values.backup.repository }}:{{ .Values.backup.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command: ["/usr/local/bin/backup.sh"]
+            volumeMounts:
+            - mountPath: /exports
+              name: exports 
+            - mountPath: /root/.ssh/
+              name: ssh-key
+            env:
+            - name: NFS_PATH
+              value: /exports
+            - name: RESTIC_REPOSITORY
+              value: {{ .Value.backup.repository }}
+            - name: RESTIC_PASSWORD
+              valueFrom:
+               secretKeyRef:
+                 name: restic-repo-passwd
+                 key: password
+            resources:
+{{ toYaml .Values.resources | indent 14 }}
+          volumes:
+          - hostPath:
+              path: {{ .Values.backup.nfsPath }}
+              type: DirectoryOrCreate
+            name: exports
+          - secret:
+              secretName: restic-ssh-key
+              defaultMode: 256
+            name: ssh-key
+          nodeSelector:
+{{ toYaml . | indent 12 }}
+        {{- end }}
+        {{- with .Values.affinity }}
+          affinity:
+{{ toYaml . | indent 12 }}
+        {{- end }}
+        {{- with .Values.tolerations }}
+          tolerations:
+{{ toYaml . | indent 12 }}
+        {{- end }}

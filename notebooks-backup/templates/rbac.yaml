@@ -1,0 +1,45 @@
+{{- if .Values.rbac.enabled -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notebooks-backup
+  labels:
+    app: {{ template "notebook-backup.name" . }}
+    chart: {{ template "notebook-backup.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: notebooks-backup
+  labels:
+    app: {{ template "notebook-backup.name" . }}
+    chart: {{ template "notebook-backup.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims", "persistentvolumes"]
+    verbs: ["get", "list", "watch", "create"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: notebooks-backup
+  labels:
+    app: {{ template "notebook-backup.name" . }}
+    chart: {{ template "notebook-backup.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+subjects:
+- kind: ServiceAccount
+  name: notebooks-backup
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: notebooks-backup
+  apiGroup: rbac.authorization.k8s.io
+---
+{{- end }}
