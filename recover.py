@@ -2,7 +2,7 @@ import argparse
 import glob
 import logging
 import os
-import shutil
+import subprocess
 import time
 
 import yaml
@@ -40,16 +40,6 @@ def make_pvc(old_pvc, storage_class):
         )
         pvc.spec.storage_class_name = storage_class
     return pvc
-
-
-def copytree(src, dst, symlinks=False, ignore=None):
-    for item in os.listdir(src):
-        s = os.path.join(src, item)
-        d = os.path.join(dst, item)
-        if os.path.isdir(s):
-            shutil.copytree(s, d, symlinks, ignore)
-        else:
-            shutil.copy2(s, d)
 
 
 def main():
@@ -121,9 +111,9 @@ def main():
         src_path = glob.glob(base_path).pop()
         logging.info("Will restore storage of user %s at %s from %s",
                      username, dest_path, src_path)
-        try:
-            copytree(src_path, dest_path)
-        except shutil.Error as e:
+        sts = subprocess.call("tar -cf - -C %s . | tar -xf - -C %s"
+                              % (src_path, dest_path), shell=True)
+        if sts != 0:
             logging.error("*" * 80)
             logging.error("*" * 80)
             logging.error("Something went wrong: %s, "
