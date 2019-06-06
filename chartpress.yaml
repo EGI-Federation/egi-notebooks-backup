@@ -7,5 +7,5 @@ charts:
 
     images:
       backup:
-        #valuesPath: image
+        valuesPath: image
         contextPath: . 

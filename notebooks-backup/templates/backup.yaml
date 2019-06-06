@@ -16,27 +16,26 @@ spec:
           {{- if .Values.rbac.enabled }}
           serviceAccountName: notebooks-backup
           {{- end }}
-          restartPolicy: Never 
+          restartPolicy: Never
           containers:
-          - name: backup 
-            image: "{{ .Values.backup.repository }}:{{ .Values.backup.tag }}"
+          - name: backup
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command: ["/usr/local/bin/backup.sh"]
             volumeMounts:
             - mountPath: /exports
-              name: exports 
+              name: exports
             - mountPath: /root/.ssh/
-              name: ssh-key
+              name: restic-ssh
+            - mountPath: /restic-secret/
+              name: restic-password
             env:
             - name: NFS_PATH
               value: /exports
             - name: RESTIC_REPOSITORY
               value: {{ .Value.backup.repository }}
-            - name: RESTIC_PASSWORD
-              valueFrom:
-               secretKeyRef:
-                 name: restic-repo-passwd
-                 key: password
+            - name: RESTIC_PASSWORD_FILE
+              vale: /restic-secret/password
             resources:
 {{ toYaml .Values.resources | indent 14 }}
           volumes:
@@ -45,9 +44,13 @@ spec:
               type: DirectoryOrCreate
             name: exports
           - secret:
-              secretName: restic-ssh-key
+              secretName: restic-ssh
               defaultMode: 256
-            name: ssh-key
+            name: restic-ssh
+          - secret:
+              secretName: restic-password
+              defaultMode: 256
+            name: restic-password
           nodeSelector:
 {{ toYaml . | indent 12 }}
         {{- end }}
