@@ -36,7 +36,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: notebooks-backup
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
   name: notebooks-backup
