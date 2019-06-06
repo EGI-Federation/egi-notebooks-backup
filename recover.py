@@ -53,7 +53,7 @@ def copytree(src, dst, symlinks=False, ignore=None):
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("pvc", help="YAML file with the PVC description")
     parser.add_argument("--namespace", "-n",
@@ -72,6 +72,7 @@ def main():
     with open(args.pvc, 'r') as f:
         pvcs = yaml.safe_load(f.read())
 
+    count = 0
     for old_pvc in pvcs['items']:
         if old_pvc['kind'] != 'PersistentVolumeClaim':
             continue
@@ -82,6 +83,7 @@ def main():
         username = md.get('annotations', {}).get('hub.jupyter.org/username')
         if not username:
             continue
+        logging.info("PVC: %s", md['name'])
         try:
             new_pvc = v1.create_namespaced_persistent_volume_claim(
                 namespace=namespace,
@@ -93,10 +95,10 @@ def main():
                     logging.info("PVC is already there, but restoring again")
                 else:
                     # skip it, assume was copied before
+                    logging.info("PVC is already there, ignoring")
                     continue
             else:
                 raise e
-        logging.info("CREATED PVC: %s", new_pvc.metadata.name)
         # now wait until the volume is there and copy files 
         vol_ready = False
         while not vol_ready:
@@ -112,13 +114,22 @@ def main():
                 logging.info("Destination path: %s" % dest_path)
                 vol_ready = True
                 break
-            time.sleep(5)
+            time.sleep(3)
         # src_path is discovered as "namespace-<id>-pvc-<some number>"
         base_path = os.path.join(args.backup_path, '%s-%s-pvc-*'
                                                     % (namespace, md['name']))
         src_path = glob.glob(base_path).pop()
-        copytree(src_path, dest_path)
-        logging.info("Restored storage of user %s at %s", username, dest_path)
+        logging.info("Will restore storage of user %s at %s from %s",
+                     username, dest_path, src_path)
+        try:
+            copytree(src_path, dest_path)
+        except shutil.Error as e:
+            logging.error("*" * 80)
+            logging.error("*" * 80)
+            logging.error("Something went wrong: %s, "
+                          "please manually copy contents" % e)
+        count = count + 1
+    logging.info("Restored %d users" % count)
 
 if __name__ == "__main__":
     main()
