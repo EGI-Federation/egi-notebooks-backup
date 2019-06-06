@@ -42,4 +42,28 @@ configuration when installing.
 ## Recovering user data
 
 This is not included in the helm chart as it is meant to be manually triggered
-by the Notebooks admin.
+by the Notebooks admin. For convenience some k8s objects are included in the
+recovery directory, these will require:
+
+- Secrets similar to the one in the helm chart:
+
+```
+kubectl create secret generic restic-ssh --from-file=id_rsa --from-file=known_hosts
+
+kubectl create secret generic restic-password --from-literal=password=<some secret>
+```
+
+- Create rbac roles for giving permission to create pvc's:
+```
+kubectl apply -f recovery/rbac.yaml
+```
+
+- Tune the job to use the namespaces you want to recover and apply:
+```
+kubectl apply -f recovery/job.yaml
+```
+
+- Enjoy the recovery process!
+```
+kubectl logs -f <your recovery-pod>
+```

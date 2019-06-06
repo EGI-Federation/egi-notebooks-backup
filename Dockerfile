@@ -1,6 +1,6 @@
 FROM python:3.7-alpine
 
-# kubectl 
+# kubectl
 RUN wget https://storage.googleapis.com/kubernetes-release/release/v1.14.2/bin/linux/amd64/kubectl \
         -O /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
 
@@ -14,9 +14,8 @@ RUN apk add openssh
 # the backup script
 COPY backup.sh /usr/local/bin/backup.sh
 
-# the recover script
+# the recovery part
 COPY requirements.txt /tmp/requirements.txt
-
 RUN pip install -r /tmp/requirements.txt
-
 COPY recover.py /usr/local/bin
+COPY recover.sh /usr/local/bin
