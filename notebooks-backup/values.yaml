@@ -9,8 +9,8 @@ backup:
   knownHosts:
 
 image:
-  name: eginotebooks/svc-backup
-  tag: '0.1.0-280d092'
+  repository: eginotebooks/svc-backup
+  tag: '0.1.0'
   pullPolicy: IfNotPresent
 
 nodeSelector:
