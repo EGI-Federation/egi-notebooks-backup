@@ -1,23 +1,31 @@
 language: python
 python:
-  - 3.6
+- 3.6
 git:
   depth: false
 services:
-  - docker
+- docker
 jobs:
   include:
   - stage: build chart and publish
     install:
     - pip3 install -r dev-requirements.txt
     - mkdir -p bin
-    - curl -ssL https://storage.googleapis.com/kubernetes-helm/helm-v2.3.0-linux-amd64.tar.gz | tar -xz -C . --strip-components 1 linux-amd64/helm
+    - curl -ssL https://storage.googleapis.com/kubernetes-helm/helm-v2.3.0-linux-amd64.tar.gz
+      | tar -xz -C . --strip-components 1 linux-amd64/helm
     - chmod +x helm
     - sudo mv helm /usr/local/bin
     - helm init --client-only
     script:
     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - CHARTPRESS_OPT=""
-    - if [ "x$TRAVIS_TAG" != "x" ]; then CHARTPRESS_OPT="$CHARTPRESS_OPT --tag $TRAVIS_TAG"; fi
-    - if [ "x$TRAVIS_COMMIT_RANGE" != "x" ]; then CHARTPRESS_OPT="$CHARTPRESS_OPT --commit-range $TRAVIS_COMMIT_RANGE"; fi
+    - if [ "x$TRAVIS_TAG" != "x" ]; then CHARTPRESS_OPT="$CHARTPRESS_OPT --tag $TRAVIS_TAG";
+      fi
+    - if [ "x$TRAVIS_COMMIT_RANGE" != "x" ]; then CHARTPRESS_OPT="$CHARTPRESS_OPT
+      --commit-range $TRAVIS_COMMIT_RANGE"; fi
     - chartpress $CHARTPRESS_OPT --push --publish-chart
+env:
+  global:
+  - secure: slI/R2kioNaJ4qFEtwXCcbAojxoFBlqADtOzY7AYLEhl3KDZ9uDyc/4Z6S1FV3wdUFwU+vAVV+51Ge1ZYdK0DRPy53IbHgfKdonjReOrUbB+Bs4bLb9ZYk9IALMhbRIvbRruKVco4GV3r6trfrHMVG5/J584QBxcCTm8TYoDG3y02ttv/04BbhqFGlBhsJI4tO/X1aUOqXGEMvIUyu3WmojX1SdI6adkzS1+OEOQUPVo30NP7a/kUVtw3/QvigY6r404hLSsQKH3ufs2SnC8Nc/qzwu5t4p2C66ReH8nmJ9HRAjeOJT6ykLvP2zH95tPPBcHmRf6bXXgbQLWIjdGp3Az+RfJOWHtZ7t19LBNr350SoEaQrSmIasLlP6mp93KuiWTz3XFK4gLkvCBYIbBIb4PKxFvkHCWxmsXwgmZiq7kPJ0wsYMiSJ3E77bF7kvPEiFSLF4z1YjxsBJoVfzT91Y83DnuxY1ftrg0KQ6oPrzDL9C/gk3srneN+SCkLHR20XAJ1rz5gGPPiVjAkiH8T7UtkhVPgtuhhEDtfT2Ji6eBy1JX1GG99nUNidiJF9HzOy3mHo5QB6GXHN7tSBEQ1aZkW8GzJYuVi2TF7PyEdW/biyPWoT4gh5lXO880tHu15tLcC6BoUezhOBBQONxXUz4j2KRBdJIaQ0gW6nQ3kTA=
+  - secure: h2CkvKEYtVaUVkKWzzEQ5SPQWINBXPvurhLN5NrPHHancb7hxVnQmgTOz/F+Dkow7WYszxz+YmBMoqupaoKDFgXU1jH17hJcvT/tFiK0x8Yc5R9E1N3QI5XrTUWxSImPPBmiLF3dTt4sPo9cQcroc155M0ADj9chfJfZOGXCzLmIin3H6Pz4vPoDbDxi4Y6c55VGj2CceIEYsz/ekADMHRkmRChMJC+vjl4sWIGAs+eoHEtU9DYTHoeM7QUT8YBniCazV+EZHBYddnL5zt+DQcmvjbIRx80ChPN9paIrceSlNEdCorfx5kb3/SU7e8sbZTLscLhCVlFm30TaBkjKrpfpKXLpW99doeLjtm/XqBog8Z9GNlCpkhKNRJtnXUG0U0Jj+0e+pXC9QV9Cd4CHV7R91U5ULGhiVHCNnlNdGltHbE+2w/9VBBotPgt2wjxO9+6gk5gxM6EKNorLQZQEuY7aGHjMlGr/ALLzmeG+CaIYMjBtcdtoMR6mC5Ra6WiZ/rIxvQNsek0qYFoNb3rxlwbA8sfF/RBgj5h3S2xELW3MArlq/wRLxA8J3RzLEpMFBsopV/q4T16pn6d4U4rHpkuP5M/6wG8Pp/Z5jdpUC2S8XFY2SLUHqzvaWDyLLkWF7siVpQTdKDNd8Jhg0nZnYJyernZcOGz7eIHfQX06P8o=
+  - secure: HpytEmCIkNa/hyvVWPnnKLM+YrJ0tl7m0WXOgWtN6A1OuW38GGC0tL4PIYjGxsIJmsqq14tJ+jxyhdcWL6OfWd6bB0vgMg7MUvrloEGGTP4+xfWGZ9p1RoZe8EAht9MG3Bcc2jfbkOq+lzpOIrOnOmAg893rcQ0bO36dj690mX9f5rIyVimpItDfaXFBkbox29H6MB746bBIhSVjLRTNGrZYDgN6/OA79bCTwBqH3k5l83Vv8OEPsgfbSOmIdU6/1wQaYk6mvTxAOBWoICe+h4OVkmdJyHyFKMMiXvo5efYr/ju44PYSDzkZjBXEDiceSx2cCAV9OIk42eo9aDzUuOtraawntzzrx1Q7/jMG7UrAsNfvVRMGo0sM4lL0mJ+UQck+WouAc/tRc2BMfIFrKRZnEn0GaHmk2bkg5UyosSJpvsA4chZb5QZJ+TVxXLb05uZ71Sv3f9qTOitU1WFecVtYvBepdUu1IElwqdrmsTzMCSvEBD4airOeBJP9B51wpDNuvTIWwoHFL1AOMHsE8VoXgqnP7Pqea+cP7nRZJpxGaBXlph1nhORnH9tL4LpOJEAxx24B5uf8o7o6akRS9aeiOd+TrZKu/5kw28zCnDB8KsCh1A7syUwAOfotyM976mfocbPPK5vZyjL8rdzGeKJhFTdl0jXQLEWYt9lfzaM=
