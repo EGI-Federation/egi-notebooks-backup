@@ -2,8 +2,8 @@ rbac:
   enabled: true
 
 backup:
-  schedule: 25 23 * * * 
-  repository: ""
+  schedule: 25 23 * * *
+  repository:
   nfsPath: /exports
   sshKey:
   knownHosts:
@@ -14,12 +14,12 @@ image:
   pullPolicy: IfNotPresent
 
 nodeSelector:
-  nfs-server: "true"
+  nfs-server: 'true'
 
 tolerations:
-    key: node-role.kubernetes.io/master
-    operator: Exists
-    effect: NoSchedule
+  key: node-role.kubernetes.io/master
+  operator: Exists
+  effect: NoSchedule
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious

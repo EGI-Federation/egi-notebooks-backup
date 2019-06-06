@@ -51,6 +51,7 @@ spec:
               secretName: restic-password
               defaultMode: 256
             name: restic-password
+        {{- with .Values.nodeSelector }}
           nodeSelector:
 {{ toYaml . | indent 12 }}
         {{- end }}
