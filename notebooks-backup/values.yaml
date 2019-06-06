@@ -10,14 +10,14 @@ backup:
 
 image:
   name: eginotebooks/svc-backup
-  tag: '0.1.0'
+  tag: '0.1.0-280d092'
   pullPolicy: IfNotPresent
 
 nodeSelector:
   nfs-server: 'true'
 
 tolerations:
-  key: node-role.kubernetes.io/master
+- key: node-role.kubernetes.io/master
   operator: Exists
   effect: NoSchedule
 

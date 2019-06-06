@@ -33,7 +33,7 @@ spec:
             - name: NFS_PATH
               value: /exports
             - name: RESTIC_REPOSITORY
-              value: {{ .Value.backup.repository }}
+              value: {{ .Values.backup.repository }}
             - name: RESTIC_PASSWORD_FILE
               vale: /restic-secret/password
             resources:
