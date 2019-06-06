@@ -24,6 +24,8 @@ spec:
         env:
         - name: NFS_PATH
           value: /exports
+        - name: NAMESPACE
+          value: catchall
         - name: RESTIC_REPOSITORY
           value: "sftp:centos@134.158.151.166:/backups/notebooks" 
         - name: RESTIC_PASSWORD_FILE
