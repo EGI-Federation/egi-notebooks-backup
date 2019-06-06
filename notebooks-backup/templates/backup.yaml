@@ -35,7 +35,7 @@ spec:
             - name: RESTIC_REPOSITORY
               value: {{ .Values.backup.repository }}
             - name: RESTIC_PASSWORD_FILE
-              vale: /restic-secret/password
+              value: /restic-secret/password
             resources:
 {{ toYaml .Values.resources | indent 14 }}
           volumes:
