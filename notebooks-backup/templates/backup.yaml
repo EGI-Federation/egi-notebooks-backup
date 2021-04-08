@@ -25,8 +25,10 @@ spec:
             volumeMounts:
             - mountPath: /exports
               name: exports
+            {{- if .Values.backup.sshKey }}
             - mountPath: /root/.ssh/
               name: restic-ssh
+            {{- end }}
             - mountPath: /restic-secret/
               name: restic-password
             env:
@@ -36,6 +38,11 @@ spec:
               value: {{ .Values.backup.repository }}
             - name: RESTIC_PASSWORD_FILE
               value: /restic-secret/password
+{{- if .Values.backup.env }}
+            envFrom:
+            - secretRef:
+                name: restic-env
+{{- end }}
             resources:
 {{ toYaml .Values.resources | indent 14 }}
           volumes:
@@ -43,10 +50,12 @@ spec:
               path: {{ .Values.backup.nfsPath }}
               type: DirectoryOrCreate
             name: exports
+          {{- if .Values.backup.sshKey }}
           - secret:
               secretName: restic-ssh
               defaultMode: 256
             name: restic-ssh
+          {{- end }}
           - secret:
               secretName: restic-password
               defaultMode: 256
