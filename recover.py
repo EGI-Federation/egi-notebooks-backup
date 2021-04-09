@@ -53,6 +53,8 @@ def main():
                         default=".")
     parser.add_argument("--overwrite", help="Overwrite existing PVC",
                         action="store_true")
+    parser.add_argument("--target-namespace", "-t",
+                        help="target namespace (no change if unspecified)")
     args = parser.parse_args()
 
     kubernetes.config.load_incluster_config()
@@ -69,13 +71,17 @@ def main():
         namespace = md['namespace']
         if args.namespace and namespace != args.namespace:
             continue
+        if args.target_namespace:
+            target_namespace = args.target_namespace
+        else:
+            target_namespace = namespace
         username = md.get('annotations', {}).get('hub.jupyter.org/username')
         if not username:
             continue
         logging.info("PVC: %s", md['name'])
         try:
             v1.create_namespaced_persistent_volume_claim(
-                namespace=namespace,
+                namespace=target_namespace,
                 body=make_pvc(old_pvc, args.storage_class)
             )
         except ApiException as e:
@@ -93,7 +99,7 @@ def main():
         while not vol_ready:
             pvc = v1.read_namespaced_persistent_volume_claim(
                     name=md['name'],
-                    namespace=namespace
+                    namespace=target_namespace
             )
             if pvc.spec.volume_name:
                 vol = v1.read_persistent_volume(name=pvc.spec.volume_name)
