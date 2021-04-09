@@ -16,16 +16,15 @@ import kubernetes.client
 from kubernetes.client.rest import ApiException
 
 
-
 def make_pvc(old_pvc, storage_class):
     pvc = V1PersistentVolumeClaim()
     pvc.kind = "PersistentVolumeClaim"
     pvc.api_version = "v1"
     pvc.metadata = V1ObjectMeta()
-    pvc.metadata.name = old_pvc['metadata']['name'] 
+    pvc.metadata.name = old_pvc['metadata']['name']
     username = old_pvc['metadata']['annotations']['hub.jupyter.org/username']
     pvc.metadata.annotations = {
-        'hub.jupyter.org/username': username 
+        'hub.jupyter.org/username': username
     }
     pvc.metadata.labels = old_pvc['metadata']['labels'].copy()
     pvc.spec = V1PersistentVolumeClaimSpec()
@@ -75,7 +74,7 @@ def main():
             continue
         logging.info("PVC: %s", md['name'])
         try:
-            new_pvc = v1.create_namespaced_persistent_volume_claim(
+            v1.create_namespaced_persistent_volume_claim(
                 namespace=namespace,
                 body=make_pvc(old_pvc, args.storage_class)
             )
@@ -89,7 +88,7 @@ def main():
                     continue
             else:
                 raise e
-        # now wait until the volume is there and copy files 
+        # now wait until the volume is there and copy files
         vol_ready = False
         while not vol_ready:
             pvc = v1.read_namespaced_persistent_volume_claim(
@@ -97,8 +96,8 @@ def main():
                     namespace=namespace
             )
             if pvc.spec.volume_name:
-                vol = v1.read_persistent_volume(name=pvc.spec.volume_name) 
-                # this is very NFS specific, will change quite a lot with 
+                vol = v1.read_persistent_volume(name=pvc.spec.volume_name)
+                # this is very NFS specific, will change quite a lot with
                 # any other kind of storage
                 dest_path = vol.spec.nfs.path
                 logging.info("Destination path: %s" % dest_path)
@@ -107,7 +106,7 @@ def main():
             time.sleep(3)
         # src_path is discovered as "namespace-<id>-pvc-<some number>"
         base_path = os.path.join(args.backup_path, '%s-%s-pvc-*'
-                                                    % (namespace, md['name']))
+                                                   % (namespace, md['name']))
         src_path = glob.glob(base_path).pop()
         logging.info("Will restore storage of user %s at %s from %s",
                      username, dest_path, src_path)
@@ -117,9 +116,10 @@ def main():
             logging.error("*" * 80)
             logging.error("*" * 80)
             logging.error("Something went wrong: %s, "
-                          "please manually copy contents" % e)
+                          "please manually copy contents" % sts)
         count = count + 1
     logging.info("Restored %d users" % count)
+
 
 if __name__ == "__main__":
     main()
