@@ -15,7 +15,6 @@ jobs:
       | tar -xz -C . --strip-components 1 linux-amd64/helm
     - chmod +x helm
     - sudo mv helm /usr/local/bin
-    - helm init --client-only
     script:
     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - CHARTPRESS_OPT=""
