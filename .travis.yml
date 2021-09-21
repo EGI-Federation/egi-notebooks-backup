@@ -11,11 +11,10 @@ jobs:
     install:
     - pip3 install -r dev-requirements.txt
     - mkdir -p bin
-    - curl -ssL https://storage.googleapis.com/kubernetes-helm/helm-v2.3.0-linux-amd64.tar.gz
+    - curl -ssL https://get.helm.sh/helm-v3.5.3-linux-amd64.tar.gz
       | tar -xz -C . --strip-components 1 linux-amd64/helm
     - chmod +x helm
     - sudo mv helm /usr/local/bin
-    - helm init --client-only
     script:
     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - CHARTPRESS_OPT=""
