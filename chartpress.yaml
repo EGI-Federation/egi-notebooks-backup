@@ -1,11 +1,8 @@
 charts:
   - name: notebooks-backup
-    imagePrefix: eginotebooks/svc-
-    repo:
-      git: egi-foundation/egi-notebooks-chart
-      published: https://egi-foundation.github.io/egi-notebooks-chart
+    imagePrefix: registry.egi.eu/vo.notebooks.egi.eu/svc-
 
     images:
       backup:
         valuesPath: image
-        contextPath: . 
+        contextPath: .
