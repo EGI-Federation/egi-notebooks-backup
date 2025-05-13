@@ -52,5 +52,5 @@ jobs:
           chartpress --push
           helm package notebooks-backup
           f="$(find . -maxdepth 1 -name notebooks-backup-\*.tgz | head -n 1)"
-          helm push "$f" "oci://${{ vars.REGISTRY_SERVER }}/${{ vars.REGISTRY_PROJECT }}"
+          helm push "$f" "oci://${{ vars.REGISTRY_SERVER }}/${{ vars.REGISTRY_CHART_PROJECT }}"
         if: github.event_name != 'pull_request'
