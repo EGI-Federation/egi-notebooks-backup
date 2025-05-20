@@ -22,7 +22,9 @@ spec:
           - name: backup
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
-            command: ["/usr/local/bin/backup.sh"]
+            command:
+              - "/usr/local/bin/backup.sh"
+{{ toYaml .Values.backup.args | indent 14 }}
             volumeMounts:
             - mountPath: /exports
               name: exports
