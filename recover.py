@@ -1,3 +1,7 @@
+"""
+Utility to recover data from restic.
+"""
+
 import argparse
 import glob
 import logging
@@ -5,20 +9,20 @@ import os
 import subprocess
 import time
 
-import yaml
-
 import kubernetes
+import kubernetes.client
+import yaml
 from kubernetes.client.models import (
     V1ObjectMeta,
-    V1ResourceRequirements,
     V1PersistentVolumeClaim,
     V1PersistentVolumeClaimSpec,
+    V1ResourceRequirements,
 )
-import kubernetes.client
 from kubernetes.client.rest import ApiException
 
 
 def make_pvc(old_pvc, storage_class):
+    """Make persistent volume claim object in Kubernetes."""
     pvc = V1PersistentVolumeClaim()
     pvc.kind = "PersistentVolumeClaim"
     pvc.api_version = "v1"
@@ -42,6 +46,7 @@ def make_pvc(old_pvc, storage_class):
 
 
 def main():
+    """Recover data from restic."""
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("pvc", help="YAML file with the PVC description")
@@ -61,7 +66,7 @@ def main():
     kubernetes.config.load_incluster_config()
     v1 = kubernetes.client.CoreV1Api()
     pvcs = {}
-    with open(args.pvc, "r") as f:
+    with open(args.pvc, "r", encoding="utf-8") as f:
         pvcs = yaml.safe_load(f.read())
 
     count = 0
@@ -105,14 +110,12 @@ def main():
                 # this is very NFS specific, will change quite a lot with
                 # any other kind of storage
                 dest_path = vol.spec.nfs.path
-                logging.info("Destination path: %s" % dest_path)
+                logging.info("Destination path: %s", dest_path)
                 vol_ready = True
                 break
             time.sleep(3)
         # src_path is discovered as "namespace-<id>-pvc-<some number>"
-        base_path = os.path.join(
-            args.backup_path, "%s-%s-pvc-*" % (namespace, md["name"])
-        )
+        base_path = os.path.join(args.backup_path, "{namespace}-{md['name']}-pvc-*")
         src_path = glob.glob(base_path).pop()
         logging.info(
             "Will restore storage of user %s at %s from %s",
@@ -121,16 +124,16 @@ def main():
             src_path,
         )
         sts = subprocess.call(
-            "tar -cf - -C %s . | tar -xf - -C %s" % (src_path, dest_path), shell=True
+            f"tar -cf - -C {src_path} . | tar -xf - -C {dest_path}", shell=True
         )
         if sts != 0:
             logging.error("*" * 80)
             logging.error("*" * 80)
             logging.error(
-                "Something went wrong: %s, " "please manually copy contents" % sts
+                "Something went wrong: %s, please manually copy contents", sts
             )
         count = count + 1
-    logging.info("Restored %d users" % count)
+    logging.info("Restored %d users", count)
 
 
 if __name__ == "__main__":
