@@ -6,6 +6,7 @@ import argparse
 import fnmatch
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -20,6 +21,8 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
 )
 from kubernetes.client.rest import ApiException
+
+LOCAL_RESTORE_PATH = "/exports/recover-cache"
 
 
 def make_pvc(old_pvc, storage_class):
@@ -51,9 +54,7 @@ def restic(args, dry_run=0):
     cmd = ["restic"] + args
     logging.info("shell: %s", " ".join(cmd))
     if dry_run:
-        result = subprocess.CompletedProcess
-        result.stdout = b""
-        result.returncode = 0
+        result = subprocess.CompletedProcess(args=cmd, stdout=b"", returncode=0)
     else:
         result = subprocess.run(cmd, capture_output=True, check=False)
         if result.returncode != 0:
@@ -72,7 +73,11 @@ def main():
         "--namespace", "-n", help="namespace to consider (all if unspecified)"
     )
     parser.add_argument("--storage-class", "-s", help="storage class for PVC")
-    parser.add_argument("--backup-path", help="where the backup is", default="/exports")
+    parser.add_argument(
+        "--remote-backup-path",
+        help="where the backup is in the repository",
+        default="/exports",
+    )
     parser.add_argument(
         "--overwrite", help="Overwrite existing PVC", action="store_true"
     )
@@ -82,12 +87,12 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulated run")
     args = parser.parse_args()
 
-    result = restic(["ls", "-q", "latest", args.backup_path], dry_run=False)
+    result = restic(["ls", "-q", "latest", args.remote_backup_path], dry_run=False)
     if result.returncode != 0:
         logging.error("Initial restic command failed")
         sys.exit(result.returncode)
     old_paths = [
-        os.path.relpath(line, args.backup_path)
+        os.path.relpath(line, args.remote_backup_path)
         for line in result.stdout.decode("utf-8").splitlines()
     ]
     for p in old_paths:
@@ -98,6 +103,9 @@ def main():
     pvcs = {}
     with open(args.pvc, "r", encoding="utf-8") as f:
         pvcs = yaml.safe_load(f.read())
+
+    if not args.dry_run:
+        os.makedirs(LOCAL_RESTORE_PATH, exist_ok=True)
 
     count = 0
     for old_pvc in pvcs["items"]:
@@ -132,8 +140,9 @@ def main():
             else:
                 raise e
         if args.dry_run:
-            dest_path = os.path.join(args.backup_path, "fake-" + md["name"])
+            dest_path = os.path.join("/exports", "fake-" + md["name"])
         else:
+            dest_path = None
             # now wait until the volume is there and copy files
             vol_ready = False
             while not vol_ready:
@@ -159,7 +168,15 @@ def main():
                 "Source path for volume %s of user %s not found", md["name"], username
             )
             continue
-        src_path = os.path.join(args.backup_path, matched.pop())
+        if dest_path is None:
+            logging.error("*" * 80)
+            logging.error(
+                "Destination path for volume %s of user %s not found",
+                md["name"],
+                username,
+            )
+            continue
+        src_path = os.path.join(args.remote_backup_path, matched.pop())
         logging.info(
             "Will restore storage of user %s at %s from %s",
             username,
@@ -167,7 +184,14 @@ def main():
             src_path,
         )
         result = restic(
-            ["restore", "--include", src_path, "--target", dest_path],
+            [
+                "restore",
+                "latest",
+                "--include",
+                src_path,
+                "--target",
+                LOCAL_RESTORE_PATH,
+            ],
             dry_run=args.dry_run,
         )
         if result.returncode != 0:
@@ -177,6 +201,22 @@ def main():
                 md["name"],
                 username,
             )
+        if not dest_path or dest_path == "/":
+            logging.error("*" * 80)
+            logging.error(
+                "Wrong destination directory for volume %s of user %s",
+                md["name"],
+                username,
+            )
+            continue
+        if os.path.exists(dest_path):
+            logging.info("Removing %s", dest_path)
+            if not args.dry_run:
+                shutil.rmtree(dest_path)
+        restored_path = LOCAL_RESTORE_PATH + src_path
+        logging.info("Moving %s to %s", restored_path, dest_path)
+        if not args.dry_run:
+            shutil.move(restored_path, dest_path)
         count = count + 1
     logging.info("Restored %d users", count)
 
