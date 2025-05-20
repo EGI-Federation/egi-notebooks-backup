@@ -2,9 +2,9 @@
 
 set -x
 
-# Get stuff from restic
+# get Kubernetes metadata from restic
 mkdir /backup
-restic restore latest --target /backup
+restic restore latest --include /exports/pvc --target /backup
 
 # and now do the python magic
-python /usr/local/bin/recover.py --backup-path /backup/exports/ --namespace "$NAMESPACE" --target-namespace "$TARGET_NAMESPACE" /backup/exports/pvc
+python /usr/local/bin/recover.py --backup-path /exports --namespace "$NAMESPACE" --target-namespace "$TARGET_NAMESPACE" /backup/exports/pvc "$@"

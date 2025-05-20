@@ -3,10 +3,11 @@ Utility to recover data from restic.
 """
 
 import argparse
-import glob
+import fnmatch
 import logging
 import os
 import subprocess
+import sys
 import time
 
 import kubernetes
@@ -22,7 +23,7 @@ from kubernetes.client.rest import ApiException
 
 
 def make_pvc(old_pvc, storage_class):
-    """Make persistent volume claim object in Kubernetes."""
+    """Construct persistent volume claim python object for Kubernetes."""
     pvc = V1PersistentVolumeClaim()
     pvc.kind = "PersistentVolumeClaim"
     pvc.api_version = "v1"
@@ -45,6 +46,23 @@ def make_pvc(old_pvc, storage_class):
     return pvc
 
 
+def restic(args, dry_run=0):
+    """Call restic command."""
+    cmd = ["restic"] + args
+    logging.info("shell: %s", " ".join(cmd))
+    if dry_run:
+        result = subprocess.CompletedProcess
+        result.stdout = b""
+        result.returncode = 0
+    else:
+        result = subprocess.run(cmd, capture_output=True, check=False)
+        if result.returncode != 0:
+            logging.error(
+                "shell: %s => return code %d", " ".join(cmd), result.returncode
+            )
+    return result
+
+
 def main():
     """Recover data from restic."""
     logging.basicConfig(level=logging.INFO)
@@ -54,14 +72,26 @@ def main():
         "--namespace", "-n", help="namespace to consider (all if unspecified)"
     )
     parser.add_argument("--storage-class", "-s", help="storage class for PVC")
-    parser.add_argument("--backup-path", help="where the backup is", default=".")
+    parser.add_argument("--backup-path", help="where the backup is", default="/exports")
     parser.add_argument(
         "--overwrite", help="Overwrite existing PVC", action="store_true"
     )
     parser.add_argument(
         "--target-namespace", "-t", help="target namespace (no change if unspecified)"
     )
+    parser.add_argument("--dry-run", action="store_true", help="Simulated run")
     args = parser.parse_args()
+
+    result = restic(["ls", "-q", "latest", args.backup_path], dry_run=False)
+    if result.returncode != 0:
+        logging.error("Initial restic command failed")
+        sys.exit(result.returncode)
+    old_paths = [
+        os.path.relpath(line, args.backup_path)
+        for line in result.stdout.decode("utf-8").splitlines()
+    ]
+    for p in old_paths:
+        logging.debug("Found path in restic: %s", p)
 
     kubernetes.config.load_incluster_config()
     v1 = kubernetes.client.CoreV1Api()
@@ -85,10 +115,12 @@ def main():
         if not username:
             continue
         logging.info("PVC: %s", md["name"])
+        pvc = make_pvc(old_pvc, args.storage_class)
         try:
-            v1.create_namespaced_persistent_volume_claim(
-                namespace=target_namespace, body=make_pvc(old_pvc, args.storage_class)
-            )
+            if not args.dry_run:
+                v1.create_namespaced_persistent_volume_claim(
+                    namespace=target_namespace, body=pvc
+                )
         except ApiException as e:
             if e.status == 409:
                 if args.overwrite:
@@ -99,38 +131,51 @@ def main():
                     continue
             else:
                 raise e
-        # now wait until the volume is there and copy files
-        vol_ready = False
-        while not vol_ready:
-            pvc = v1.read_namespaced_persistent_volume_claim(
-                name=md["name"], namespace=target_namespace
-            )
-            if pvc.spec.volume_name:
-                vol = v1.read_persistent_volume(name=pvc.spec.volume_name)
-                # this is very NFS specific, will change quite a lot with
-                # any other kind of storage
-                dest_path = vol.spec.nfs.path
-                logging.info("Destination path: %s", dest_path)
-                vol_ready = True
-                break
-            time.sleep(3)
+        if args.dry_run:
+            dest_path = os.path.join(args.backup_path, "fake-" + md["name"])
+        else:
+            # now wait until the volume is there and copy files
+            vol_ready = False
+            while not vol_ready:
+                pvc = v1.read_namespaced_persistent_volume_claim(
+                    name=md["name"], namespace=target_namespace
+                )
+                if pvc.spec.volume_name:
+                    vol = v1.read_persistent_volume(name=pvc.spec.volume_name)
+                    # this is very NFS specific, will change quite a lot with
+                    # any other kind of storage
+                    dest_path = vol.spec.nfs.path
+                    logging.info("Destination path: %s", dest_path)
+                    vol_ready = True
+                    break
+                time.sleep(0.5)
         # src_path is discovered as "namespace-<id>-pvc-<some number>"
-        base_path = os.path.join(args.backup_path, "{namespace}-{md['name']}-pvc-*")
-        src_path = glob.glob(base_path).pop()
+        base_path = f"{namespace}-{md['name']}-pvc-*"
+        matched = fnmatch.filter(old_paths, base_path)
+        logging.debug("Matching %s => %s", base_path, matched)
+        if len(matched) == 0:
+            logging.error("*" * 80)
+            logging.error(
+                "Source path for volume %s of user %s not found", md["name"], username
+            )
+            continue
+        src_path = os.path.join(args.backup_path, matched.pop())
         logging.info(
             "Will restore storage of user %s at %s from %s",
             username,
             dest_path,
             src_path,
         )
-        sts = subprocess.call(
-            f"tar -cf - -C {src_path} . | tar -xf - -C {dest_path}", shell=True
+        result = restic(
+            ["restore", "--include", src_path, "--target", dest_path],
+            dry_run=args.dry_run,
         )
-        if sts != 0:
-            logging.error("*" * 80)
+        if result.returncode != 0:
             logging.error("*" * 80)
             logging.error(
-                "Something went wrong: %s, please manually copy contents", sts
+                "Something went wrong with volume %s of user %s",
+                md["name"],
+                username,
             )
         count = count + 1
     logging.info("Restored %d users", count)
