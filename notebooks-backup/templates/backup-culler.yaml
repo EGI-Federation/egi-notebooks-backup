@@ -1,34 +1,32 @@
+{{- if .Values.backup.culler.schedule }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: notebooks-backup
+  name: notebooks-backup-culler
   labels:
-    app: {{ template "notebook-backup.name" . }}
+    app: {{ template "notebook-backup.name" . }}-culler
     chart: {{ template "notebook-backup.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
-  concurrencyPolicy: Allow
-  schedule: {{ .Values.backup.schedule }}
+  concurrencyPolicy: Replace
+  schedule: {{ .Values.backup.culler.schedule }}
   jobTemplate:
     spec:
       template:
         spec:
-          {{- if .Values.rbac.enabled }}
-          serviceAccountName: notebooks-backup
-          {{- end }}
           restartPolicy: Never
           containers:
-          - name: backup
+          - name: backup-culler
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
-              - "/usr/local/bin/backup.sh"
-{{ toYaml .Values.backup.args | indent 14 }}
+              - restic
+              - "-v"
+              - forget
+{{ toYaml .Values.backup.culler.args | indent 14 }}
             volumeMounts:
-            - mountPath: /exports
-              name: exports
             {{- if .Values.backup.sshKey }}
             - mountPath: /root/.ssh/
               name: restic-ssh
@@ -36,8 +34,6 @@ spec:
             - mountPath: /restic-secret/
               name: restic-password
             env:
-            - name: NFS_PATH
-              value: /exports
             - name: RESTIC_REPOSITORY
               value: {{ .Values.backup.repository }}
             - name: RESTIC_PASSWORD_FILE
@@ -50,10 +46,6 @@ spec:
             resources:
 {{ toYaml .Values.resources | indent 14 }}
           volumes:
-          - hostPath:
-              path: {{ .Values.backup.nfsPath }}
-              type: DirectoryOrCreate
-            name: exports
           {{- if .Values.backup.sshKey }}
           - secret:
               secretName: restic-ssh
@@ -64,7 +56,7 @@ spec:
               secretName: restic-password
               defaultMode: 256
             name: restic-password
-        {{- with .Values.nodeSelector }}
+        {{- with .Values.nodeSelectorCuller }}
           nodeSelector:
 {{ toYaml . | indent 12 }}
         {{- end }}
@@ -76,3 +68,4 @@ spec:
           tolerations:
 {{ toYaml . | indent 12 }}
         {{- end }}
+{{- end }}

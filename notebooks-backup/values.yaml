@@ -8,11 +8,32 @@ backup:
     - "--exclude=/exports/archived-*-pvc-*"
     - "--exclude=/exports/*-prom-prometheus-server-pvc-*"
     - "--exclude=/exports/prometheus-*-pvc-*"
-  repository:
   nfsPath: /exports
+  repository:
   sshKey:
   knownHosts:
   env: {}
+
+  #
+  # Snapshots rotation in backup storage
+  #
+  # Parameters taken from backup:
+  #
+  #  * repository
+  #  * sshKey
+  #  * knownHosts
+  #  * env
+  #
+  culler:
+    # empty value to disable
+    schedule: 20 21 * * 0
+    # arguments for restic forget
+    args:
+      - "--keep-monthly"
+      - "12"
+      - "--keep-daily"
+      - "30"
+      - "--prune"
 
 image:
   repository: registry.egi.eu/vo.notebooks.egi.eu/svc-backup
@@ -21,6 +42,8 @@ image:
 
 nodeSelector:
   nfs-server: "true"
+
+nodeSelectorCuller: {}
 
 tolerations:
   - key: node-role.kubernetes.io/master
