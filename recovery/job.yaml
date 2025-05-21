@@ -9,39 +9,39 @@ spec:
       serviceAccountName: notebooks-backup-recover
       restartPolicy: Never
       containers:
-      - args:
-        - /usr/local/bin/recover.sh
-        image: eginotebooks/svc-backup:0.1.0-71c4a52 
-        imagePullPolicy: Always
-        name: recover 
-        volumeMounts:
-        - mountPath: /exports
-          name: dest
-        - mountPath: /root/.ssh
-          name: restic-ssh
-        - mountPath: /restic-secret/
-          name: restic-password
-        env:
-        - name: NFS_PATH
-          value: /exports
-        - name: NAMESPACE
-          value: catchall
-        - name: RESTIC_REPOSITORY
-          value: "sftp:centos@134.158.151.166:/backups/notebooks" 
-        - name: RESTIC_PASSWORD_FILE
-          value: /restic-secret/password
+        - args:
+            - /usr/local/bin/recover.sh
+          image: eginotebooks/svc-backup:0.1.0-71c4a52
+          imagePullPolicy: Always
+          name: recover
+          volumeMounts:
+            - mountPath: /exports
+              name: dest
+            - mountPath: /root/.ssh
+              name: restic-ssh
+            - mountPath: /restic-secret/
+              name: restic-password
+          env:
+            - name: NFS_PATH
+              value: /exports
+            - name: NAMESPACE
+              value: catchall
+            - name: RESTIC_REPOSITORY
+              value: "sftp:centos@134.158.151.166:/backups/notebooks"
+            - name: RESTIC_PASSWORD_FILE
+              value: /restic-secret/password
       nodeSelector:
         nfs-server: "true"
       volumes:
-      - hostPath:
-          path: /exports
-          type: DirectoryOrCreate
-        name: dest
-      - secret:
-          secretName: restic-ssh
-          defaultMode: 256
-        name: restic-ssh
-      - secret:
-          secretName: restic-password
-          defaultMode: 256
-        name: restic-password
+        - hostPath:
+            path: /exports
+            type: DirectoryOrCreate
+          name: dest
+        - secret:
+            secretName: restic-ssh
+            defaultMode: 256
+          name: restic-ssh
+        - secret:
+            secretName: restic-password
+            defaultMode: 256
+          name: restic-password
