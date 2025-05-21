@@ -5,8 +5,9 @@ rbac:
 backup:
   schedule: 25 23 * * *
   args:
-    - "--exclude='*-prom-prometheus-server-pvc-*'"
-    - "--exclude='prometheus-prometheus-server-pvc-*'"
+    - "--exclude=/exports/archived-*-pvc-*"
+    - "--exclude=/exports/*-prom-prometheus-server-pvc-*"
+    - "--exclude=/exports/prometheus-*-pvc-*"
   repository:
   nfsPath: /exports
   sshKey:
