@@ -18,9 +18,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: notebooks-backup-recover
 subjects:
-- kind: ServiceAccount
-  name: notebooks-backup-recover
-  namespace: default
+  - kind: ServiceAccount
+    name: notebooks-backup-recover
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: notebooks-backup-recover

@@ -1,3 +1,4 @@
+---
 charts:
   - name: notebooks-backup
     imagePrefix: registry.egi.eu/vo.notebooks.egi.eu/svc-
