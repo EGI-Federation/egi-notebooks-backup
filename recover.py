@@ -82,6 +82,11 @@ def main():
         "--overwrite", help="Overwrite existing PVC", action="store_true"
     )
     parser.add_argument(
+        "--skip-data",
+        help="Do not restore data, only volumes metadata",
+        action="store_true",
+    )
+    parser.add_argument(
         "--target-namespace", "-t", help="target namespace (no change if unspecified)"
     )
     parser.add_argument("--dry-run", action="store_true", help="Simulated run")
@@ -178,45 +183,47 @@ def main():
             continue
         src_path = os.path.join(args.remote_backup_path, matched.pop())
         logging.info(
-            "Will restore storage of user %s at %s from %s",
+            "%s restore storage of user %s at %s from %s",
+            "Won't" if args.skip_data else "Will",
             username,
             dest_path,
             src_path,
         )
-        result = restic(
-            [
-                "restore",
-                "latest",
-                "--include",
-                src_path,
-                "--target",
-                LOCAL_RESTORE_PATH,
-            ],
-            dry_run=args.dry_run,
-        )
-        if result.returncode != 0:
-            logging.error("*" * 80)
-            logging.error(
-                "Something went wrong with volume %s of user %s",
-                md["name"],
-                username,
+        if not args.skip_data:
+            result = restic(
+                [
+                    "restore",
+                    "latest",
+                    "--include",
+                    src_path,
+                    "--target",
+                    LOCAL_RESTORE_PATH,
+                ],
+                dry_run=args.dry_run,
             )
-        if not dest_path or dest_path == "/":
-            logging.error("*" * 80)
-            logging.error(
-                "Wrong destination directory for volume %s of user %s",
-                md["name"],
-                username,
-            )
-            continue
-        if os.path.exists(dest_path):
-            logging.info("Removing %s", dest_path)
+            if result.returncode != 0:
+                logging.error("*" * 80)
+                logging.error(
+                    "Something went wrong with volume %s of user %s",
+                    md["name"],
+                    username,
+                )
+            if not dest_path or dest_path == "/":
+                logging.error("*" * 80)
+                logging.error(
+                    "Wrong destination directory for volume %s of user %s",
+                    md["name"],
+                    username,
+                )
+                continue
+            if os.path.exists(dest_path):
+                logging.info("Removing %s", dest_path)
+                if not args.dry_run:
+                    shutil.rmtree(dest_path)
+            restored_path = LOCAL_RESTORE_PATH + src_path
+            logging.info("Moving %s to %s", restored_path, dest_path)
             if not args.dry_run:
-                shutil.rmtree(dest_path)
-        restored_path = LOCAL_RESTORE_PATH + src_path
-        logging.info("Moving %s to %s", restored_path, dest_path)
-        if not args.dry_run:
-            shutil.move(restored_path, dest_path)
+                shutil.move(restored_path, dest_path)
         count = count + 1
     logging.info("Restored %d users", count)
 
