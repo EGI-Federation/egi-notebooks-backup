@@ -1,13 +1,16 @@
-FROM python:3.7-alpine
+FROM python:3.13-alpine
+
+ARG KUBECTL_VERSION=1.33.3
+ARG RESTIC_VERSION=0.18.0
 
 SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 # kubectl
-RUN wget https://storage.googleapis.com/kubernetes-release/release/v1.14.2/bin/linux/amd64/kubectl \
-        -nv -O /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+RUN wget "https://dl.k8s.io/release/v$KUBECTL_VERSION/bin/linux/amd64/kubectl" -nv -O /usr/local/bin/kubectl \
+	&& chmod +x /usr/local/bin/kubectl
 
 # restic
-RUN wget https://github.com/restic/restic/releases/download/v0.9.5/restic_0.9.5_linux_amd64.bz2 -nv -O - \
+RUN wget "https://github.com/restic/restic/releases/download/v$RESTIC_VERSION/restic_${RESTIC_VERSION}_linux_amd64.bz2" -nv -O - \
       | bunzip2 > /usr/local/bin/restic && chmod +x /usr/local/bin/restic
 
 # ssh is needed for restic
